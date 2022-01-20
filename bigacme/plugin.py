@@ -1,21 +1,42 @@
 """Functions that interacts with DNS plugins"""
 import logging
+
 from pkg_resources import iter_entry_points
+
 
 class PluginError(Exception):
     """Superclass for all plugin exceptions."""
+
     pass
+
+
 class InvalidConfigError(PluginError):
     """Raised when the plugin configuration does not match the plugin"""
+
     pass
+
+
 class NoPluginFoundError(PluginError):
     """Raised when no plugin was found"""
+
     pass
+
 
 logger = logging.getLogger(__name__)
 
+
 def get_plugin(configuration):
     """Discovers, and returns, the installed plugin"""
+
+    plugins = []
+    for entry_point in iter_entry_points(group="bigacme.plugins"):
+        plugins += [entry_point]
+
+    if not plugins:
+        raise NoPluginFoundError()
+
+    if len(plugins) > 1:
+        logger.warning("Several plugins found. This is not supported.")
 
     if not configuration.plugin:
         raise InvalidConfigError("No Plugin section in configuration file")
@@ -24,29 +45,20 @@ def get_plugin(configuration):
     for param, value in configuration.plugin:
         plugin_config[param] = value
 
-    plugins = []
-    for entry_point in iter_entry_points(group='bigacme.plugins'):
-        plugins += [entry_point]
+    plugin = plugins[0].load()
 
-    if len(plugins) > 1:
-        logger.warning("Several plugins found. This is not supported.")
+    if not issubclass(plugin, BigacmePlugin):
+        raise PluginError("Plugin is not a valid bigacme plugin")
 
-    if plugins:
-        plugin = plugins[0].load()
+    logger.debug("Using plugin '%s'", plugin.name)
 
-        if not issubclass(plugin, BigacmePlugin):
-            raise PluginError('Plugin is not a valid bigacme plugin')
+    return plugin(**plugin_config)
 
-        logger.debug('Using plugin %s', plugin.name)
-
-        return plugin(**plugin_config)
-
-    raise NoPluginFoundError
 
 class BigacmePlugin:
     """This class represent a bigacme DNS plugin"""
 
-    name = 'generic bigacme plugin'
+    name = "generic bigacme plugin"
 
     def __init__(self, **kwargs):
         """
@@ -56,7 +68,7 @@ class BigacmePlugin:
         :raises InvalidConfigError: If the configuration is not valid for the plugin.
         """
 
-    def perform(self, domain, validation_name, validation):
+    def perform(self, domain: str, validation_name: str, validation: str):
         """
         Here the plugin must add the specified DNS record.
 
@@ -76,7 +88,7 @@ class BigacmePlugin:
         :raises PluginError: If the performing fails.
         """
 
-    def cleanup(self, domain, validation_name, validation):
+    def cleanup(self, domain: str, validation_name: str, validation: str):
         """
         Here the plugin can clean up after performing.
         This will normally be to remove the added records.

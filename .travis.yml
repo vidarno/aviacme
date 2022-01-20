@@ -1,9 +1,10 @@
 language: python
-python:
-- '3.6'
+sudo: required
+dist: xenial
+python: "3.6"
 install:
 - pip install -r requirements.test.txt
 script:
-- pytest --lb $LB --pass $PASS --cov=bigacme
+- sudo env "PATH=$PATH" pytest --lb $LB --pass $PASS --system-user $USER --cov=bigacme
 after_success:
 - codecov
