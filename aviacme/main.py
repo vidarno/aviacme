@@ -25,10 +25,10 @@ def partition_completer(ctx, args, incomplete):
     logging.disable(60)
     try:
         all_certs = cert.get_all_certs()
-        partitions = set(
-            [x.partition for x in all_certs if x.partition.startswith(incomplete)]
+        tenants = set(
+            [x.tenant for x in all_certs if x.tenant.startswith(incomplete)]
         )
-        return sorted(partitions)
+        return sorted(tenants)
     except:
         return []
 
@@ -40,12 +40,12 @@ def csrname_completer(ctx, args, incomplete):
     logging.disable(60)
     try:
         all_certs = cert.get_all_certs()
-        partition = args[-1]
+        tenant = args[-1]
         return sorted(
             [
                 cert.name
                 for cert in all_certs
-                if cert.partition == partition and cert.name.startswith(incomplete)
+                if cert.tenant == tenant and cert.name.startswith(incomplete)
             ]
         )
     except:
@@ -121,7 +121,7 @@ def handle_exceptions(func):
     type=click.Path(),
 )
 def cli(config_dir):
-    """ACME client for Big-IP"""
+    """ACME client for NSX Advanced Load Balancer (AVI)"""
     try:
         os.chdir(os.path.abspath(config_dir))
     except OSError as error:
@@ -138,24 +138,24 @@ def cli(config_dir):
 
 @cli.command(name="new", help="Request a new certificate.")
 @click.argument(  # type: ignore
-    "partition", callback=utils.validate_bigip_name, autocompletion=partition_completer
+    "tenant", callback=utils.validate_bigip_name, autocompletion=partition_completer
 )
 @click.argument("csrname", callback=utils.validate_bigip_name)
 @click.option("--dns", is_flag=True, help="Use DNS validation instead of HTTP.")
 @need_configuration()
 @handle_exceptions
-def new_cert(partition, csrname, dns, configuration):
+def new_cert(tenant, csrname, dns, configuration):
     """
     Fetches the specified CSR from the device
     and retrieves a certificate from the CA
     """
     logger.info(
-        "User '%s' started issuance of cert '%s' in partition '%s'",
+        "User '%s' started issuance of cert '%s' in tenant '%s'",
         getpass.getuser(),
         csrname,
-        partition,
+        configuration.tenant,
     )
-    bigip = lb.LoadBalancer.create_from_config(configuration)
+    avi = lb.LoadBalancer.create_from_config(configuration)
 
     if dns:
         try:
@@ -184,15 +184,15 @@ def new_cert(partition, csrname, dns, configuration):
         dns_plugin = None
         chall_typ = cert.ValidationMethod.HTTP01
 
-    click.echo("Getting the CSR from the Big-IP...")
+    click.echo("Getting the CSR from AVI...")
 
     try:
         with click_spinner.spinner():
-            csr = bigip.get_csr(partition, csrname)
-    except lb.PartitionNotFoundError:
-        logger.info("The partition '%s' was not found on the device", partition)
+            csr = avi.get_csr(configuration.tenant, csrname)
+    except lb.TenantNotFoundError:
+        logger.info("The tenant '%s' was not found on the device", configuration.tenant)
         click.secho(
-            "The specified partition does not seem to exist.", fg="yellow", err=True
+            "The specified tenant does not seem to exist.", fg="yellow", err=True
         )
         sys.exit(2)
 
@@ -200,7 +200,7 @@ def new_cert(partition, csrname, dns, configuration):
         logger.error("The user was denied access by the load balancer")
         click.secho(
             "The user was denied access by the load balancer. "
-            "Do the user have the Certificate Manager role in the specified partition?",
+            "Does the user have the proper role in the specified tenant?",
             fg="yellow",
             err=True,
         )
@@ -209,19 +209,19 @@ def new_cert(partition, csrname, dns, configuration):
     except lb.NotFoundError:
         logger.info("The CSR '%s' was not found on the device", csrname)
         click.secho(
-            "Could not find the csr on the big-ip. Check the spelling.",
+            "Could not find the csr on AVI. Check the spelling.",
             fg="yellow",
             err=True,
         )
         sys.exit(2)
 
-    certobj = cert.Certificate.new(partition, csrname, csr, chall_typ)
+    certobj = cert.Certificate.new(configuration.tenant, csrname, csr, chall_typ)
     click.echo("Getting a new certificate from the CA. This may take a while...")
     acme_ca = ca.CertificateAuthority.create_from_config(configuration)
 
     try:
         with click_spinner.spinner():
-            certificate = _get_new_cert(acme_ca, bigip, certobj, dns_plugin)
+            certificate = _get_new_cert(acme_ca, avi, certobj, dns_plugin)
     except ca.GetCertificateFailedError as error:
         logger.error("Could not get a certificate from the CA: %s", error)
         if chall_typ == cert.ValidationMethod.HTTP01:
@@ -249,7 +249,8 @@ def new_cert(partition, csrname, dns, configuration):
         sys.exit(1)
 
     certobj.cert = certificate
-    bigip.upload_certificate(partition, csrname, certobj.cert)
+    result = avi.upload_certificate(configuration.tenant, csrname, certobj.cert)
+
     certobj.mark_as_installed()
 
     click.secho("Done.", fg="green")
@@ -265,14 +266,14 @@ def renew(configuration):
 
     if renewals or certs_to_be_installed:
         acme_ca = ca.CertificateAuthority.create_from_config(configuration)
-        bigip = lb.LoadBalancer.create_from_config(configuration)
+        avi = lb.LoadBalancer.create_from_config(configuration)
 
     dns_plugin = None
     for renewal in renewals:
         logger.info(
-            "Renewing cert: '%s' from partition: '%s' using '%s'",
+            "Renewing cert: '%s' from tenant: '%s' using '%s'",
             renewal.name,
-            renewal.partition,
+            renewal.tenant,
             renewal.validation_method.value,
         )
 
@@ -281,36 +282,36 @@ def renew(configuration):
                 dns_plugin = plugin.get_plugin(configuration)
             except plugin.PluginError:
                 logger.exception(
-                    "Could not load plugin to renew certificate '%s' in partition '%s':",
+                    "Could not load plugin to renew certificate '%s' in tenant '%s':",
                     renewal.name,
-                    renewal.partition,
+                    renewal.tenant,
                 )
                 continue
 
         try:
-            certificate = _get_new_cert(acme_ca, bigip, renewal, dns_plugin)
+            certificate = _get_new_cert(acme_ca, avi, renewal, dns_plugin)
         except (ca.GetCertificateFailedError, lb.LoadBalancerError, plugin.PluginError):
             logger.exception(
-                "Could not renew certificate '%s' in partition '%s':",
+                "Could not renew certificate '%s' in tenant '%s':",
                 renewal.name,
-                renewal.partition,
+                renewal.tenant,
             )
             continue
         renewal.renew(certificate)
 
     for tbi_cert in certs_to_be_installed:
         logger.info(
-            "Installing cert: '%s' in partition: '%s'",
+            "Installing cert: '%s' in tenant: '%s'",
             tbi_cert.name,
-            tbi_cert.partition,
+            tbi_cert.tenant,
         )
         try:
-            bigip.upload_certificate(tbi_cert.partition, tbi_cert.name, tbi_cert.cert)
+            avi.upload_certificate(tbi_cert.tenant, tbi_cert.name, tbi_cert.cert)
         except lb.LoadBalancerError:
             logger.exception(
-                "Could not install certificate '%s' in partition '%s':",
+                "Could not install certificate '%s' in tenant '%s':",
                 tbi_cert.name,
-                tbi_cert.partition,
+                tbi_cert.tenant,
             )
             continue
         tbi_cert.mark_as_installed()
@@ -321,32 +322,32 @@ def renew(configuration):
 
 @cli.command(name="remove", help="Remove a certificate, so that it won't be renewed.")
 @click.argument(  # type: ignore
-    "partition", callback=utils.validate_bigip_name, autocompletion=partition_completer
+    "tenant", callback=utils.validate_bigip_name, autocompletion=partition_completer
 )
 @click.argument(  # type: ignore
     "csrname", callback=utils.validate_bigip_name, autocompletion=csrname_completer
 )
 @need_configuration()
 @handle_exceptions
-def remove(partition, csrname, configuration):
+def remove(tenant, csrname, configuration):
     """Removes a certificate so that it won't get renewed"""
     try:
-        cert.Certificate.get(partition, csrname).delete()
+        cert.Certificate.get(tenant, csrname).delete()
     except cert.CertificateNotFoundError:
         click.secho("The specified certificate was not found.", fg="yellow", err=True)
         sys.exit(2)
 
     click.confirm(
         f"Are you sure you want to remove certificate '{csrname}' "
-        f"in partition '{partition}'?",
+        f"in tenant '{tenant}'?",
         abort=True,
     )
 
     logger.info(
-        "User '%s' removed cert '%s' in partition '%s'",
+        "User '%s' removed cert '%s' in tenant '%s'",
         getpass.getuser(),
         csrname,
-        partition,
+        tenant,
     )
 
     click.secho(f"Certificate removed.", fg="green")
@@ -354,18 +355,18 @@ def remove(partition, csrname, configuration):
 
 @cli.command(name="revoke", help="Revoke a certificate.")
 @click.argument(  # type: ignore
-    "partition", callback=utils.validate_bigip_name, autocompletion=partition_completer
+    "tenant", callback=utils.validate_bigip_name, autocompletion=partition_completer
 )
 @click.argument(  # type: ignore
     "csrname", callback=utils.validate_bigip_name, autocompletion=csrname_completer
 )
 @need_configuration()
 @handle_exceptions
-def revoke(partition, csrname, configuration):
+def revoke(tenant, csrname, configuration):
     """Revokes a certificate"""
 
     try:
-        certificate = cert.Certificate.get(partition, csrname)
+        certificate = cert.Certificate.get(tenant, csrname)
     except cert.CertificateNotFoundError:
         click.secho("The specified certificate was not found.", fg="yellow", err=True)
         sys.exit(2)
@@ -383,7 +384,7 @@ def revoke(partition, csrname, configuration):
     click.echo()
     click.echo(
         f"Are you sure you want to revoke certificate '{csrname}' "
-        f"in partition '{partition}'?"
+        f"in tenanat '{tenant}'?"
     )
     click.echo()
     click.echo("Type REVOKE (all caps) if you are sure.")
@@ -407,10 +408,10 @@ def revoke(partition, csrname, configuration):
     acme_ca.revoke_certifciate(certificate.cert, reason)
     certificate.delete()
     logger.info(
-        "User '%s' revoked cert '%s' in partition '%s'",
+        "User '%s' revoked cert '%s' in tenant '%s'",
         getpass.getuser(),
         csrname,
-        partition,
+        tenant,
     )
     click.secho(f"Certificate revoked.", fg="green")
 
@@ -535,25 +536,25 @@ def new_config(debug):
 
 @cli.command(name="list", help="List all the certificates that will be renewed.")
 @click.argument(  # type: ignore
-    "partition",
+    "tenant",
     callback=utils.validate_bigip_name,
     autocompletion=partition_completer,
     required=False,
 )
 @need_configuration(need_account=False)
 @handle_exceptions
-def list_certs(partition, configuration):
+def list_certs(tenant, configuration):
     """Lists all the certs that are going to be renewed"""
-    columns = ("Partition", "Name", "Validation method", "Status")
+    columns = ("Tenant", "Name", "Validation method", "Status")
     all_certs = cert.get_all_certs()
     relevant_certs = []
     for certificate in all_certs:
 
-        if partition and partition != certificate.partition:
+        if tenant and tenant != certificate.tenant:
             continue
         relevant_certs.append(
             (
-                certificate.partition,
+                certificate.tenant,
                 certificate.name,
                 certificate.validation_method.value,
                 certificate.status.value,
@@ -568,7 +569,7 @@ def list_certs(partition, configuration):
         sys.exit(2)
 
 
-def _get_new_cert(acme_ca, bigip, csr, dns_plugin):
+def _get_new_cert(acme_ca, avi, csr, dns_plugin):
     logger.debug("Getting the challenges from the CA")
 
     order = acme_ca.order_new_cert(csr.csr)
@@ -576,12 +577,13 @@ def _get_new_cert(acme_ca, bigip, csr, dns_plugin):
         order, csr.validation_method
     )
 
-    if csr.validation_method == cert.ValidationMethod.HTTP01:
-        for challenge in challenges:
-            bigip.send_challenge(
-                challenge.identifier, challenge.challenge.path, challenge.validation
-            )
-    elif csr.validation_method == cert.ValidationMethod.DNS01:
+    # if csr.validation_method == cert.ValidationMethod.HTTP01:
+    #     for challenge in challenges:
+    #         avi.send_challenge(
+    #             challenge.identifier, challenge.challenge.path, challenge.validation
+    #         )
+    # el
+    if csr.validation_method == cert.ValidationMethod.DNS01:
         for challenge in challenges:
             record_name = challenge.challenge.validation_domain_name(
                 challenge.identifier
@@ -598,10 +600,11 @@ def _get_new_cert(acme_ca, bigip, csr, dns_plugin):
         certificate = acme_ca.get_certificate_from_ca(order)
     finally:
         # cleanup
-        if csr.validation_method == cert.ValidationMethod.HTTP01:
-            for challenge in challenges:
-                bigip.remove_challenge(challenge.identifier, challenge.challenge.path)
-        elif csr.validation_method == cert.ValidationMethod.DNS01:
+        # if csr.validation_method == cert.ValidationMethod.HTTP01:
+        #     for challenge in challenges:
+        #         bigip.remove_challenge(challenge.identifier, challenge.challenge.path)
+        # el
+        if csr.validation_method == cert.ValidationMethod.DNS01:
             for challenge in challenges:
                 record_name = challenge.challenge.validation_domain_name(
                     challenge.identifier

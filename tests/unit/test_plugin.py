@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-import bigacme.plugin
+import aviacme.plugin
 
 
 def _generate_dummy_config():
@@ -18,7 +18,7 @@ def test_get_plugin_missing_config():
     configtp = namedtuple("Config", ["plugin"])
     config = configtp(plugin=None)
 
-    class BigacmePlugin(bigacme.plugin.BigacmePlugin):
+    class BigacmePlugin(aviacme.plugin.BigacmePlugin):
         name = "A correct plugin"
 
         def __init__(self, **kwargs):
@@ -30,13 +30,13 @@ def test_get_plugin_missing_config():
     mock_entry_points = mock.MagicMock(return_value=[registered_plugin])
 
     with mock.patch("bigacme.plugin.iter_entry_points", mock_entry_points):
-        with pytest.raises(bigacme.plugin.InvalidConfigError):
-            bigacme.plugin.get_plugin(config)
+        with pytest.raises(aviacme.plugin.InvalidConfigError):
+            aviacme.plugin.get_plugin(config)
 
 
 def test_get_plugin_no_plugin():
-    with pytest.raises(bigacme.plugin.NoPluginFoundError):
-        bigacme.plugin.get_plugin(_generate_dummy_config())
+    with pytest.raises(aviacme.plugin.NoPluginFoundError):
+        aviacme.plugin.get_plugin(_generate_dummy_config())
 
 
 def test_load_plugin():
@@ -46,7 +46,7 @@ def test_load_plugin():
     and log a debug message that we did
     """
 
-    class BigacmePlugin(bigacme.plugin.BigacmePlugin):
+    class BigacmePlugin(aviacme.plugin.BigacmePlugin):
         name = "A correct plugin"
 
         def __init__(self, **kwargs):
@@ -63,7 +63,7 @@ def test_load_plugin():
         "bigacme.plugin.logger", mock_logger
     ):
 
-        plugin = bigacme.plugin.get_plugin(_generate_dummy_config())
+        plugin = aviacme.plugin.get_plugin(_generate_dummy_config())
 
         assert plugin.kwargs == {"hei": "sann", "hade": "bra"}
         mock_logger.debug.assert_called_once_with(
@@ -83,8 +83,8 @@ def test_load_plugin_wrong_type():
     mock_entry_points = mock.MagicMock(return_value=[registered_plugin])
 
     with mock.patch("bigacme.plugin.iter_entry_points", mock_entry_points):
-        with pytest.raises(bigacme.plugin.PluginError) as excinfo:
-            bigacme.plugin.get_plugin(_generate_dummy_config())
+        with pytest.raises(aviacme.plugin.PluginError) as excinfo:
+            aviacme.plugin.get_plugin(_generate_dummy_config())
         assert "Plugin is not a valid bigacme plugin" in str(excinfo.value)
 
 
@@ -93,10 +93,10 @@ def test_load_several_plugins():
     If there are several plugins, we should load the first, and log an warning
     """
 
-    class BigacmePlugin1(bigacme.plugin.BigacmePlugin):
+    class BigacmePlugin1(aviacme.plugin.BigacmePlugin):
         pass
 
-    class BigacmePlugin2(bigacme.plugin.BigacmePlugin):
+    class BigacmePlugin2(aviacme.plugin.BigacmePlugin):
         pass
 
     registered_plugin1 = mock.MagicMock()
@@ -112,7 +112,7 @@ def test_load_several_plugins():
     with mock.patch("bigacme.plugin.iter_entry_points", mock_entry_points), mock.patch(
         "bigacme.plugin.logger", mock_logger
     ):
-        plugin = bigacme.plugin.get_plugin(_generate_dummy_config())
+        plugin = aviacme.plugin.get_plugin(_generate_dummy_config())
 
         mock_logger.warning.assert_called_once_with(
             "Several plugins found. This is not supported."

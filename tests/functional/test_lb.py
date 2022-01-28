@@ -10,7 +10,7 @@ import OpenSSL
 import pytest
 from f5.bigip import ManagementRoot
 
-import bigacme.lb
+import aviacme.lb
 
 
 def _generate_certificate(not_before, not_after):
@@ -68,7 +68,7 @@ def lb(opt_username, opt_password, opt_lb, opt_datagroup, opt_partition):
         lb_dg=opt_datagroup,
         lb_dg_partition=opt_partition,
     )
-    return bigacme.lb.LoadBalancer.create_from_config(config)
+    return aviacme.lb.LoadBalancer.create_from_config(config)
 
 
 @pytest.fixture(scope="module")
@@ -116,12 +116,12 @@ def test_get_csr(lb, rest_lb):
 
 
 def test_get_csr_not_existing(lb, rest_lb):
-    with pytest.raises(bigacme.lb.NotFoundError):
+    with pytest.raises(aviacme.lb.NotFoundError):
         lb.get_csr("Common", "NotACsr")
 
 
 def test_get_csr_not_existing_Partition(lb, rest_lb):
-    with pytest.raises(bigacme.lb.PartitionNotFoundError):
+    with pytest.raises(aviacme.lb.PartitionNotFoundError):
         lb.get_csr("NotAPartition", "NotACsr")
 
 
@@ -155,9 +155,9 @@ def test_get_csr_no_access(
         lb_dg=opt_datagroup,
         lb_dg_partition=opt_partition,
     )
-    bigip = bigacme.lb.LoadBalancer.create_from_config(config)
+    bigip = aviacme.lb.LoadBalancer.create_from_config(config)
 
-    with pytest.raises(bigacme.lb.AccessDeniedError):
+    with pytest.raises(aviacme.lb.AccessDeniedError):
         bigip.get_csr(temp_partition, "anyName")
 
     user.delete()
@@ -173,7 +173,7 @@ def test_upload_certificate(lb, opt_partition):
 
 def test_upload_certificate_nonexisting_partition(lb):
     cert = _generate_certificate(0, 9_999_999)
-    with pytest.raises(bigacme.lb.PartitionNotFoundError):
+    with pytest.raises(aviacme.lb.PartitionNotFoundError):
         lb.upload_certificate(
             "NotAPartition", "test_upload_certificate_certificate", [cert]
         )

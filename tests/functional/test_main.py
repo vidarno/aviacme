@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from bigacme import cert, config, version
+from aviacme import cert, config, version
 
 
 def empty_dir(func):

@@ -7,9 +7,9 @@ from acme import challenges
 from acme import errors as acme_errors
 from acme import messages
 
-from bigacme import ca
-from bigacme.ca import CAError, NoDesiredChallenge
-from bigacme.cert import ValidationMethod
+from aviacme import ca
+from aviacme.ca import CAError, NoDesiredChallenge
+from aviacme.cert import ValidationMethod
 
 
 @pytest.fixture()

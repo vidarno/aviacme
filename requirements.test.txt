@@ -1,5 +1,5 @@
 -e .
-f5-sdk>=3.0.7
+avisdk
 pytest
 pytest-cov
 pyOpenSSL

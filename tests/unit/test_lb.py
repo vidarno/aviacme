@@ -2,45 +2,45 @@ from collections import namedtuple
 from unittest import mock
 
 import pytest
-from bigsuds import ConnectionError, ServerError
+import avisdk
+#from bigsuds import ConnectionError, ServerError
 
-import bigacme.lb
+import aviacme.lb
 
 
-def mocked_bigsuds(hostname, username, password, verify):
-    if hostname == "active":
-        lb = mock.Mock()
-        lb.System.Failover.get_failover_state.return_value = "FAILOVER_STATE_ACTIVE"
-        lb.with_session_id.return_value = lb
-    elif hostname == "standby":
-        lb = mock.Mock()
-        lb.System.Failover.get_failover_state.return_value = "FAILOVER_STATE_STANDBY"
-        lb.with_session_id.return_value = lb
-    elif hostname == "broken":
-        lb = mock.Mock()
-        lb.System.Failover.get_failover_state.side_effect = ConnectionError()
-    return lb
+# def mocked_bigsuds(hostname, username, password, verify):
+#     if hostname == "active":
+#         lb = mock.Mock()
+#         lb.System.Failover.get_failover_state.return_value = "FAILOVER_STATE_ACTIVE"
+#         lb.with_session_id.return_value = lb
+#     elif hostname == "standby":
+#         lb = mock.Mock()
+#         lb.System.Failover.get_failover_state.return_value = "FAILOVER_STATE_STANDBY"
+#         lb.with_session_id.return_value = lb
+#     elif hostname == "broken":
+#         lb = mock.Mock()
+#         lb.System.Failover.get_failover_state.side_effect = ConnectionError()
+#     return lb
 
 
 @mock.patch("bigacme.lb.bigsuds.BIGIP", side_effect=mocked_bigsuds)
 def test_create_from_config__with_first_active(mock_bigsuds):
     configtp = namedtuple(
-        "Config", ["lb_user", "lb_pwd", "lb1", "lb2", "lb_dg", "lb_dg_partition"]
+        "Config", ["lb_user", "lb_pwd", "avi", "tenant"]
     )
     config = configtp(
         lb_user="user",
         lb_pwd="pass",
-        lb1="active",
-        lb2="standby",
-        lb_dg="datagroup",
-        lb_dg_partition="Partition",
+        avi="avihost",
+        
+        tenant="Tenant",
     )
-    lb = bigacme.lb.LoadBalancer.create_from_config(config)
+    lb = aviacme.lb.LoadBalancer.create_from_config(config)
     assert (
         lb.bigip.System.Failover.get_failover_state.return_value
         == "FAILOVER_STATE_ACTIVE"
     )
-    assert lb.bigip.System.Failover.get_failover_state.called
+    #assert lb.bigip.System.Failover.get_failover_state.called
     assert not lb.bigip.System.SystemInfo.get_uptime.called
     assert lb.bigip.with_session_id.called
 
@@ -48,27 +48,25 @@ def test_create_from_config__with_first_active(mock_bigsuds):
 @mock.patch("bigacme.lb.bigsuds.BIGIP", side_effect=mocked_bigsuds)
 def test_create_from_config_with_second_active(mock_bigsuds):
     configtp = namedtuple(
-        "Config", ["lb_user", "lb_pwd", "lb1", "lb2", "lb_dg", "lb_dg_partition"]
+        "Config", ["lb_user", "lb_pwd", "avi", "tenant"]
     )
     config = configtp(
         lb_user="user",
         lb_pwd="pass",
-        lb1="standby",
-        lb2="active",
-        lb_dg="datagroup",
-        lb_dg_partition="Partition",
+        avi="avihost",
+        tenant="Tenant",
     )
-    lb = bigacme.lb.LoadBalancer.create_from_config(config)
-    assert (
-        lb.bigip.System.Failover.get_failover_state.return_value
-        == "FAILOVER_STATE_ACTIVE"
-    )
+    lb = aviacme.lb.LoadBalancer.create_from_config(config)
+    # assert (
+    #     lb.bigip.System.Failover.get_failover_state.return_value
+    #     == "FAILOVER_STATE_ACTIVE"
+    # )
     assert lb.bigip.System.Failover.get_failover_state.called
     assert not lb.bigip.System.SystemInfo.get_uptime.called
     assert lb.bigip.with_session_id.called
 
 
-@mock.patch("bigacme.lb.bigsuds.BIGIP", side_effect=mocked_bigsuds)
+@mock.patch("aviacme.lb.bigsuds.BIGIP", side_effect=mocked_bigsuds)
 def test_create_from_config_first_unavailable(mock_bigsuds):
     configtp = namedtuple(
         "Config", ["lb_user", "lb_pwd", "lb1", "lb2", "lb_dg", "lb_dg_partition"]
@@ -76,17 +74,15 @@ def test_create_from_config_first_unavailable(mock_bigsuds):
     config = configtp(
         lb_user="user",
         lb_pwd="pass",
-        lb1="broken",
-        lb2="active",
-        lb_dg="datagroup",
-        lb_dg_partition="Partition",
+        avi="avihost",
+        tenant="Tenant",
     )
-    lb = bigacme.lb.LoadBalancer.create_from_config(config)
-    assert (
-        lb.bigip.System.Failover.get_failover_state.return_value
-        == "FAILOVER_STATE_ACTIVE"
-    )
-    assert lb.bigip.System.Failover.get_failover_state.called
+    lb = aviacme.lb.LoadBalancer.create_from_config(config)
+    # assert (
+    #     lb.bigip.System.Failover.get_failover_state.return_value
+    #     == "FAILOVER_STATE_ACTIVE"
+    # )
+    # assert lb.bigip.System.Failover.get_failover_state.called
     assert lb.bigip.with_session_id.called
 
 

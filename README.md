@@ -1,21 +1,17 @@
-bigacme
+aviacme
 =====
-[![Build Status](https://travis-ci.org/magnuswatn/bigacme.svg?branch=master)](https://travis-ci.org/magnuswatn/bigacme)
-[![codecov](https://codecov.io/gh/magnuswatn/bigacme/branch/master/graph/badge.svg)](https://codecov.io/gh/magnuswatn/bigacme)
 
-An ACME client for F5 Big-IP.
+An ACME client for NSX Advanced Load Balancer (AVI).
+It is a fork of bigacme, replacing the Big-IP support with support for AVI.
 
-It can be used to get certificates from a ACME compatible CA, and auto-renew them before they expire. This can reduce the administrative burden of SSL.
+It can be used to get certificates from an ACME compatible CA, and auto-renew them before they expire. This can reduce the administrative burden of SSL.
 
-<p align="center">
-    <img src="https://static.watn.no/bigacme.svg">
-</p>
 
 ## Prerequisites
-* F5 Big-IP, version 11 or higher
-* A server with access to both the Big-IP and the CA
+* A server with access to both AVI and the CA
+* A DNS-plugin to use with Aviacme to respond to ACME-challenges (HTTP-challenges will be supported in the future)
 
 ## How it works
-You manually create a CSR on the Big-IP and then tells bigacme to turn it into a certificate. Bigacme does so by configuring the Big-IP to answer the challenges from the CA. When it's time to renew the certficiate, bigacme repeats the process.
+You manually create a CSR on AVI and then tell aviacme to turn it into a certificate. Aviacme does so by configuring AVI to answer the challenges from the CA. When it's time to renew the certficiate, aviacme repeats the process.
 
 See more detailed information in the docs folder.

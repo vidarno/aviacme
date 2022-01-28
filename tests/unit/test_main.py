@@ -5,8 +5,8 @@ import tempfile
 
 import pytest
 
-import bigacme.cert
-import bigacme.main
+import aviacme.cert
+import aviacme.main
 
 ORG_CWD = os.getcwd()
 
@@ -28,8 +28,8 @@ def teardown_module(module):
 
 def _create_certificates(certificates):
     for cert in certificates:
-        certobj = bigacme.cert.Certificate.new(
-            cert[0], cert[1], "csr", bigacme.cert.ValidationMethod.HTTP01
+        certobj = aviacme.cert.Certificate.new(
+            cert[0], cert[1], "csr", aviacme.cert.ValidationMethod.HTTP01
         )
         certobj.save()
 
@@ -43,17 +43,17 @@ def test_partition_completer_completion():
         ("Partition2", "Cert5"),
     ]
     _create_certificates(certificates)
-    common_complete = bigacme.main.partition_completer(None, None, "Co")
+    common_complete = aviacme.main.partition_completer(None, None, "Co")
     assert common_complete == ["Common"]
-    partitionx_complete = bigacme.main.partition_completer(None, None, "Part")
+    partitionx_complete = aviacme.main.partition_completer(None, None, "Part")
     assert partitionx_complete == ["Partition1", "Partition2"]
 
 
 def test_partition_completer_exceptions():
     """An error should not throw a exception, but silently continue"""
 
-    cert = bigacme.cert.Certificate.new(
-        "Common", "what", "csr", bigacme.cert.ValidationMethod.HTTP01
+    cert = aviacme.cert.Certificate.new(
+        "Common", "what", "csr", aviacme.cert.ValidationMethod.HTTP01
     )
     cert.save()
 
@@ -63,7 +63,7 @@ def test_partition_completer_exceptions():
         json_bytes.seek(0)
         json_bytes.write(json.dumps(json_dict))
         json_bytes.truncate()
-    completetion = bigacme.main.partition_completer(None, None, "Co")
+    completetion = aviacme.main.partition_completer(None, None, "Co")
     assert completetion == []
     cert.delete()
 
@@ -78,11 +78,11 @@ def test_csrname_completer_completion():
         ("Common", "SomethingCompletelyDifferent"),
     ]
     _create_certificates(certificates)
-    cert_complete = bigacme.main.csrname_completer(
+    cert_complete = aviacme.main.csrname_completer(
         None, ["bigacme", "Partition1"], "Cer"
     )
     assert cert_complete == ["Cert2", "Cert3"]
-    different_complete = bigacme.main.csrname_completer(
+    different_complete = aviacme.main.csrname_completer(
         None, ["bigacme", "Common"], "Some"
     )
     assert different_complete == ["SomethingCompletelyDifferent"]
@@ -91,8 +91,8 @@ def test_csrname_completer_completion():
 def test_csrname_completer_exceptions():
     """An error should not throw a exception, but silently continue"""
 
-    cert = bigacme.cert.Certificate.new(
-        "Common", "what", "csr", bigacme.cert.ValidationMethod.HTTP01
+    cert = aviacme.cert.Certificate.new(
+        "Common", "what", "csr", aviacme.cert.ValidationMethod.HTTP01
     )
     cert.save()
 
@@ -103,6 +103,6 @@ def test_csrname_completer_exceptions():
         json_bytes.write(json.dumps(json_dict))
         json_bytes.truncate()
 
-    completetion = bigacme.main.csrname_completer(None, ["bigacme", "Common"], "Some")
+    completetion = aviacme.main.csrname_completer(None, ["bigacme", "Common"], "Some")
     assert completetion == []
     cert.delete()

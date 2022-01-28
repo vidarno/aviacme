@@ -29,7 +29,7 @@ def get_plugin(configuration):
     """Discovers, and returns, the installed plugin"""
 
     plugins = []
-    for entry_point in iter_entry_points(group="bigacme.plugins"):
+    for entry_point in iter_entry_points(group="aviacme.plugins"):
         plugins += [entry_point]
 
     if not plugins:
@@ -47,18 +47,18 @@ def get_plugin(configuration):
 
     plugin = plugins[0].load()
 
-    if not issubclass(plugin, BigacmePlugin):
-        raise PluginError("Plugin is not a valid bigacme plugin")
+    if not issubclass(plugin, AviacmePlugin):
+        raise PluginError("Plugin is not a valid aviacme plugin")
 
     logger.debug("Using plugin '%s'", plugin.name)
 
     return plugin(**plugin_config)
 
 
-class BigacmePlugin:
-    """This class represent a bigacme DNS plugin"""
+class AviacmePlugin:
+    """This class represent a aviacme DNS plugin"""
 
-    name = "generic bigacme plugin"
+    name = "generic aviacme plugin"
 
     def __init__(self, **kwargs):
         """

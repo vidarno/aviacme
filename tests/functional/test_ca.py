@@ -12,7 +12,7 @@ from collections import namedtuple
 
 import pytest
 
-from bigacme import ca, config
+from aviacme import ca, config
 
 
 def use_pebble(func):

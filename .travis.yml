@@ -5,6 +5,6 @@ python: "3.6"
 install:
 - pip install -r requirements.test.txt
 script:
-- sudo env "PATH=$PATH" pytest --lb $LB --pass $PASS --system-user $USER --cov=bigacme
+- sudo env "PATH=$PATH" pytest --lb $LB --pass $PASS --system-user $USER --cov=aviacme
 after_success:
 - codecov

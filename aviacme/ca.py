@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 logger = logging.getLogger(__name__)
 
 
-USER_AGENT = "bigacme (https://github.com/magnuswatn/bigacme/)"
+USER_AGENT = "aviacme (https://github.com/vidarno/aviacme/)"
 CERT_TIMEOUT = 90
 
 

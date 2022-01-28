@@ -39,10 +39,8 @@ def read_configfile():
         [
             "lb_user",
             "lb_pwd",
-            "lb1",
-            "lb2",
-            "lb_dg",
-            "lb_dg_partition",
+            "avi",
+            "tenant",
             "ca",
             "ca_proxy",
             "cm_account",
@@ -58,12 +56,8 @@ def read_configfile():
     else:
         ca_proxy = False
 
-    if config.getboolean("Load Balancer", "cluster"):
-        bigip1 = config.get("Load Balancer", "host 1")
-        bigip2 = config.get("Load Balancer", "host 2")
-    else:
-        bigip1 = config.get("Load Balancer", "host 1")
-        bigip2 = None
+    avi = config.get("Load Balancer", "host")
+
 
     try:
         plugin_section = config.items("Plugin")
@@ -71,12 +65,10 @@ def read_configfile():
         plugin_section = None
 
     the_config = configtp(
-        lb1=bigip1,
-        lb2=bigip2,
+        avi=avi,
         lb_user=config.get("Load Balancer", "username"),
         lb_pwd=config.get("Load Balancer", "password"),
-        lb_dg=config.get("Load Balancer", "datagroup"),
-        lb_dg_partition=config.get("Load Balancer", "datagroup partition"),
+        tenant=config.get("Load Balancer", "tenant"),
         ca=config.get("Certificate Authority", "directory url"),
         ca_proxy=ca_proxy,
         cm_account=config.get("Common", "account config"),
@@ -98,13 +90,10 @@ def create_configfile():
     config.set("Common", "delayed installation days", "5")
     config.set("Common", "account config", account_file_path)
     config.add_section("Load Balancer")
-    config.set("Load Balancer", "cluster", "True")
-    config.set("Load Balancer", "Host 1", "lb1.example.com")
-    config.set("Load Balancer", "Host 2", "lb2.example.com")
+    config.set("Load Balancer", "Host", "lb1.example.com")
     config.set("Load Balancer", "username", "admin")
     config.set("Load Balancer", "password", "password01")
-    config.set("Load Balancer", "datagroup", "acme_responses_dg")
-    config.set("Load Balancer", "datagroup partition", "Common")
+    config.set("Load Balancer", "tenant", "admin")
     config.add_section("Certificate Authority")
     config.set(
         "Certificate Authority",
@@ -127,7 +116,7 @@ def create_logconfigfile(debug):
     Creates a default log config file
 
     Normally we just use the root logger, but if debug is specified,
-    we create a separate logger for bigacme,
+    we create a separate logger for aviacme,
     and stops it from propagate to the root logger.
     Otherwise it will be flooded with suds logging
 
@@ -139,7 +128,7 @@ def create_logconfigfile(debug):
     config.add_section("loggers")
 
     if debug:
-        config.set("loggers", "keys", "root, bigacme")
+        config.set("loggers", "keys", "root, aviacme")
     else:
         config.set("loggers", "keys", "root")
 
@@ -152,11 +141,11 @@ def create_logconfigfile(debug):
     config.set("logger_root", "handlers", "fileHandler")
 
     if debug:
-        config.add_section("logger_bigacme")
-        config.set("logger_bigacme", "qualname", "bigacme")
-        config.set("logger_bigacme", "level", "DEBUG")
-        config.set("logger_bigacme", "handlers", "fileHandler")
-        config.set("logger_bigacme", "propagate", "0")
+        config.add_section("logger_aviacme")
+        config.set("logger_aviacme", "qualname", "aviacme")
+        config.set("logger_aviacme", "level", "DEBUG")
+        config.set("logger_aviacme", "handlers", "fileHandler")
+        config.set("logger_aviacme", "propagate", "0")
 
     config.add_section("handler_fileHandler")
     config.set("handler_fileHandler", "class", "FileHandler")

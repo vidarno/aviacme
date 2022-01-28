@@ -1,25 +1,25 @@
 from setuptools import setup, find_packages
 
-exec(open("./bigacme/version.py").read())
+exec(open("./aviacme/version.py").read())
 
 setup(
-    name="bigacme",
-    author="Magnus Watn",
-    description="An ACME client for F5 Big-IP",
-    long_description="Command-line program for installing and renewing certificates from an ACME CA on a F5 Big-IP",
+    name="aviacme",
+    author="Vidar Normann",
+    description="An ACME client for AVI",
+    long_description="Command-line program for installing and renewing certificates from an ACME CA on AVI",
     version=__version__,
     license="MIT",
     packages=find_packages(),
     install_requires=[
         "attrs",
         "click>=7.0",
-        "bigsuds",
+        "avisdk",
         "josepy",
         "acme>=0.22.0",
         "cryptography",
         "PyOpenSSL",
     ],
-    entry_points={"console_scripts": ["bigacme = bigacme.main:cli"]},
+    entry_points={"console_scripts": ["aviacme = aviacme.main:cli"]},
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",

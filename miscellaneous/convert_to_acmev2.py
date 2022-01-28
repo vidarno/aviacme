@@ -16,9 +16,9 @@ from acme import messages
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
-from bigacme import version
-from bigacme import ca as bigacme_ca
-from bigacme import config as bigacme_config
+from aviacme import version
+from aviacme import ca as bigacme_ca
+from aviacme import config as bigacme_config
 
 
 class OnlyExistingRegistration(messages.ResourceBody):
