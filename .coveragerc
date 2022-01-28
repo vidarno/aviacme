@@ -1,2 +1,2 @@
 [run]
-omit = bigacme/vendor/*
+omit = aviacme/vendor/*

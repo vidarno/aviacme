@@ -96,3 +96,9 @@ testmiljo*/
 
 # PyCharm
 .idea/
+
+# Pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
