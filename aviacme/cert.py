@@ -106,7 +106,7 @@ class Certificate:
     """Represents a stored certificate + csr"""
 
     name = attr.ib()
-    partition = attr.ib()
+    tenant = attr.ib()
     path = attr.ib()
     csr = attr.ib()
     _cert = attr.ib()
@@ -116,8 +116,8 @@ class Certificate:
     not_before = attr.ib()
 
     @classmethod
-    def create(cls, partition, name, **kwargs):
-        path = Path("cert", f"{partition}_{name}.json")
+    def create(cls, tenant, name, **kwargs):
+        path = Path("cert", f"{tenant}_{name}.json")
 
         csr = kwargs.pop("csr", None)
         cert = kwargs.pop("cert", None)
@@ -129,7 +129,7 @@ class Certificate:
 
         return cls(
             name,
-            partition,
+            tenant,
             path,
             csr,
             cert,
@@ -167,14 +167,14 @@ class Certificate:
         return cls.create(**loaded)
 
     @classmethod
-    def new(cls, partition, name, csr, validation_method):
+    def new(cls, tenant, name, csr, validation_method):
         """Creates a new Certificate object from a csr"""
-        return cls.create(partition, name, csr=csr, validation_method=validation_method)
+        return cls.create(tenant, name, csr=csr, validation_method=validation_method)
 
     @classmethod
-    def get(cls, partition, name):
+    def get(cls, tenant, name):
         """Get an existing certificate from disk"""
-        path = Path("cert", f"{partition}_{name}.json")
+        path = Path("cert", f"{tenant}_{name}.json")
         if path.exists():
             return cls.load(path)
         raise CertificateNotFoundError()
@@ -195,7 +195,7 @@ class Certificate:
         dumped_json = json.dumps(
             {
                 "name": self.name,
-                "partition": self.partition,
+                "tenant": self.tenant,
                 "status": self.status.value,
                 "not_before": self.not_before.isoformat(),
                 "not_after": self.not_after.isoformat(),
@@ -227,7 +227,7 @@ class Certificate:
 
     def renew(self, new_cert):
         """Backups the cert, sets a new one with status 'To be installed'"""
-        backup_path = Path("cert", "backup", f"{self.partition}_{self.name}.cer")
+        backup_path = Path("cert", "backup", f"{self.tenant}_{self.name}.cer")
         backup_path.write_text(self.cert)
         self.cert = new_cert
         self.status = Status.TO_BE_INSTALLED
