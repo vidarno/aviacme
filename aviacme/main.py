@@ -26,7 +26,7 @@ def partition_completer(ctx, args, incomplete):
     try:
         all_certs = cert.get_all_certs()
         tenants = set(
-            [x.tenant for x in all_certs if x.tenant.startswith(incomplete)]
+            [x.partition for x in all_certs if x.partition.startswith(incomplete)]
         )
         return sorted(tenants)
     except:
@@ -45,7 +45,7 @@ def csrname_completer(ctx, args, incomplete):
             [
                 cert.name
                 for cert in all_certs
-                if cert.tenant == tenant and cert.name.startswith(incomplete)
+                if cert.partition == tenant and cert.name.startswith(incomplete)
             ]
         )
     except:
@@ -153,7 +153,7 @@ def new_cert(tenant, csrname, dns, configuration):
         "User '%s' started issuance of cert '%s' in tenant '%s'",
         getpass.getuser(),
         csrname,
-        configuration.tenant,
+        tenant,
     )
     avi = lb.LoadBalancer.create_from_config(configuration)
 
@@ -188,9 +188,9 @@ def new_cert(tenant, csrname, dns, configuration):
 
     try:
         with click_spinner.spinner():
-            csr = avi.get_csr(configuration.tenant, csrname)
+            csr = avi.get_csr(tenant, csrname)
     except lb.TenantNotFoundError:
-        logger.info("The tenant '%s' was not found on the device", configuration.tenant)
+        logger.info("The tenant '%s' was not found on the device", tenant)
         click.secho(
             "The specified tenant does not seem to exist.", fg="yellow", err=True
         )
@@ -215,7 +215,7 @@ def new_cert(tenant, csrname, dns, configuration):
         )
         sys.exit(2)
 
-    certobj = cert.Certificate.new(configuration.tenant, csrname, csr, chall_typ)
+    certobj = cert.Certificate.new(tenant, csrname, csr, chall_typ)
     click.echo("Getting a new certificate from the CA. This may take a while...")
     acme_ca = ca.CertificateAuthority.create_from_config(configuration)
 
@@ -249,7 +249,7 @@ def new_cert(tenant, csrname, dns, configuration):
         sys.exit(1)
 
     certobj.cert = certificate
-    result = avi.upload_certificate(configuration.tenant, csrname, certobj.cert)
+    result = avi.upload_certificate(tenant, csrname, certobj.cert)
 
     certobj.mark_as_installed()
 
@@ -273,7 +273,7 @@ def renew(configuration):
         logger.info(
             "Renewing cert: '%s' from tenant: '%s' using '%s'",
             renewal.name,
-            renewal.tenant,
+            renewal.partition,
             renewal.validation_method.value,
         )
 
@@ -284,7 +284,7 @@ def renew(configuration):
                 logger.exception(
                     "Could not load plugin to renew certificate '%s' in tenant '%s':",
                     renewal.name,
-                    renewal.tenant,
+                    renewal.partition,
                 )
                 continue
 
@@ -294,7 +294,7 @@ def renew(configuration):
             logger.exception(
                 "Could not renew certificate '%s' in tenant '%s':",
                 renewal.name,
-                renewal.tenant,
+                renewal.partition,
             )
             continue
         renewal.renew(certificate)
@@ -303,15 +303,15 @@ def renew(configuration):
         logger.info(
             "Installing cert: '%s' in tenant: '%s'",
             tbi_cert.name,
-            tbi_cert.tenant,
+            tbi_cert.partition,
         )
         try:
-            avi.upload_certificate(tbi_cert.tenant, tbi_cert.name, tbi_cert.cert)
+            avi.upload_certificate(tbi_cert.partition, tbi_cert.name, tbi_cert.cert)
         except lb.LoadBalancerError:
             logger.exception(
                 "Could not install certificate '%s' in tenant '%s':",
                 tbi_cert.name,
-                tbi_cert.tenant,
+                tbi_cert.partition,
             )
             continue
         tbi_cert.mark_as_installed()
@@ -550,11 +550,11 @@ def list_certs(tenant, configuration):
     relevant_certs = []
     for certificate in all_certs:
 
-        if tenant and tenant != certificate.tenant:
+        if tenant and tenant != certificate.partition:
             continue
         relevant_certs.append(
             (
-                certificate.tenant,
+                certificate.partition,
                 certificate.name,
                 certificate.validation_method.value,
                 certificate.status.value,
